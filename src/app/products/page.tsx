@@ -122,7 +122,7 @@ export default function ProductsPage() {
     }).format(value)
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-gradient-to-br from-stone-100 via-emerald-50/30 to-amber-50 px-2 py-5 sm:px-3 lg:px-4">
+    <main className="relative min-h-screen overflow-hidden bg-gradient-to-br from-stone-100 via-emerald-50/30 to-amber-50 px-3 py-6 sm:px-4 sm:py-7 lg:px-6">
       <div className="pointer-events-none absolute -right-10 -top-12 h-80 w-80 rounded-full bg-emerald-300/20 blur-3xl" />
       <div className="pointer-events-none absolute -bottom-20 -left-10 h-96 w-96 rounded-full bg-amber-300/20 blur-3xl" />
 
@@ -136,7 +136,7 @@ export default function ProductsPage() {
           catalogValue={formatCurrency(catalogValue)}
         />
 
-        <section className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(320px,430px)_minmax(420px,1fr)]">
+        <section className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(320px,430px)_minmax(420px,1fr)]">
           <AddProductForm
             name={name}
             price={price}

@@ -7,7 +7,7 @@ export function AppNavigation() {
   const pathname = usePathname()
 
   const baseClass =
-    'rounded-xl px-4 py-2 text-sm font-semibold transition border'
+    'w-full rounded-xl border px-4 py-2.5 text-center text-sm font-semibold transition sm:w-auto'
 
   const tabClass = (isActive: boolean) =>
     isActive
@@ -15,7 +15,7 @@ export function AppNavigation() {
       : `${baseClass} border-emerald-200 bg-white/80 text-emerald-800 hover:bg-emerald-50`
 
   return (
-    <nav className="mb-4 flex flex-wrap gap-2" aria-label="Inventory sections">
+    <nav className="mb-5 grid grid-cols-1 gap-2 sm:flex sm:flex-wrap" aria-label="Inventory sections">
       <Link href="/products" className={tabClass(pathname === '/products')}>
         Products
       </Link>

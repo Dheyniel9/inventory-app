@@ -117,12 +117,10 @@ export default function PosPage() {
     }).format(value)
 
   const formatDate = (value: string) =>
-    new Date(value).toLocaleString('en-US', {
-      month: 'short',
+    new Date(value).toLocaleDateString('en-US', {
+      month: '2-digit',
       day: '2-digit',
       year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
     })
 
   const completeSale = async () => {
@@ -195,7 +193,7 @@ export default function PosPage() {
   }
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-gradient-to-br from-stone-100 via-emerald-50/30 to-amber-50 px-2 py-5 sm:px-3 lg:px-4">
+    <main className="relative min-h-screen overflow-hidden bg-gradient-to-br from-stone-100 via-emerald-50/30 to-amber-50 px-3 py-6 sm:px-4 sm:py-7 lg:px-6">
       <div className="pointer-events-none absolute -right-10 -top-12 h-80 w-80 rounded-full bg-emerald-300/20 blur-3xl" />
       <div className="pointer-events-none absolute -bottom-20 -left-10 h-96 w-96 rounded-full bg-amber-300/20 blur-3xl" />
 
@@ -203,7 +201,7 @@ export default function PosPage() {
         <InventoryHeader />
         <AppNavigation />
 
-        <section className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-[1.2fr_0.8fr]">
+        <section className="mt-5 grid grid-cols-1 gap-5 lg:grid-cols-[1.2fr_0.8fr]">
           <PosProductPicker
             products={products}
             cart={cart}
