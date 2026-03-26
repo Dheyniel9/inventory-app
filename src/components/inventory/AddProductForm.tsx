@@ -34,7 +34,7 @@ export function AddProductForm({
           <input
             className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-slate-900 outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-200"
             type="text"
-            placeholder="Wireless mouse"
+            placeholder="Chips.."
             value={name}
             onChange={(e) => onNameChange(e.target.value)}
             required
