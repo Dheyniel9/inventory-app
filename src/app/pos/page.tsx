@@ -6,7 +6,7 @@ import { InventoryHeader } from '../../components/inventory/InventoryHeader'
 import { PosCheckout } from '../../components/inventory/PosCheckout'
 import { PosProductPicker } from '../../components/inventory/PosProductPicker'
 import { TransactionHistoryTable } from '../../components/inventory/TransactionHistoryTable'
-import { supabase } from '../../lib/supabaseClient'
+import { isSupabaseConfigured, supabase } from '../../lib/supabaseClient'
 import { Product, TransactionHistoryItem } from '../../types/inventory'
 
 export default function PosPage() {
@@ -19,12 +19,16 @@ export default function PosPage() {
   const [transactionHistory, setTransactionHistory] = useState<TransactionHistoryItem[]>([])
 
   const fetchProducts = async (): Promise<Product[]> => {
+    if (!supabase) return []
+
     const { data, error } = await supabase.from('products').select('*')
     if (!error && data) return data as Product[]
     return []
   }
 
   const fetchTransactionHistory = async (): Promise<TransactionHistoryItem[]> => {
+    if (!supabase) return []
+
     const { data, error } = await supabase
       .from('transaction_summary')
       .select('*')
@@ -36,6 +40,12 @@ export default function PosPage() {
   }
 
   useEffect(() => {
+    if (!isSupabaseConfigured) {
+      setPosMessage('Supabase is not configured. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.')
+      setIsLoadingHistory(false)
+      return
+    }
+
     const loadData = async () => {
       setIsLoadingHistory(true)
       const [productData, transactionData] = await Promise.all([
@@ -116,6 +126,11 @@ export default function PosPage() {
     })
 
   const completeSale = async () => {
+    if (!supabase) {
+      setPosMessage('Supabase is not configured. Please set environment variables first.')
+      return
+    }
+
     if (cartItems.length === 0) {
       setPosMessage('Add at least one product to start a sale.')
       return

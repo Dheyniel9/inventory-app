@@ -6,7 +6,7 @@ import { AppNavigation } from '../../components/inventory/AppNavigation'
 import { InventoryHeader } from '../../components/inventory/InventoryHeader'
 import { InventoryList } from '../../components/inventory/InventoryList'
 import { StatsOverview } from '../../components/inventory/StatsOverview'
-import { supabase } from '../../lib/supabaseClient'
+import { isSupabaseConfigured, supabase } from '../../lib/supabaseClient'
 import { Product } from '../../types/inventory'
 
 export default function ProductsPage() {
@@ -19,6 +19,8 @@ export default function ProductsPage() {
   const [message, setMessage] = useState('')
 
   const fetchProducts = async (): Promise<Product[]> => {
+    if (!supabase) return []
+
     const { data, error } = await supabase.from('products').select('*')
     if (!error && data) return data as Product[]
     return []
@@ -32,6 +34,12 @@ export default function ProductsPage() {
   }
 
   useEffect(() => {
+    if (!isSupabaseConfigured) {
+      setMessage('Supabase is not configured. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.')
+      setIsLoading(false)
+      return
+    }
+
     let isMounted = true
 
     void fetchProducts().then((data) => {
@@ -49,6 +57,12 @@ export default function ProductsPage() {
     e.preventDefault()
     setIsSubmitting(true)
     setMessage('')
+
+    if (!supabase) {
+      setMessage('Supabase is not configured. Please set environment variables first.')
+      setIsSubmitting(false)
+      return
+    }
 
     const parsedPrice = parseFloat(price)
 
@@ -75,6 +89,11 @@ export default function ProductsPage() {
   }
 
   const deleteProduct = async (id: number) => {
+    if (!supabase) {
+      setMessage('Supabase is not configured. Please set environment variables first.')
+      return
+    }
+
     setDeletingId(id)
     const { error } = await supabase.from('products').delete().eq('id', id)
 
