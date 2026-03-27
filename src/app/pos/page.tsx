@@ -15,7 +15,7 @@ export default function PosPage() {
   const [cashGiven, setCashGiven] = useState('')
   const [posMessage, setPosMessage] = useState('')
   const [isCompletingSale, setIsCompletingSale] = useState(false)
-  const [isLoadingHistory, setIsLoadingHistory] = useState(true)
+  const [isLoadingHistory, setIsLoadingHistory] = useState(isSupabaseConfigured)
   const [transactionHistory, setTransactionHistory] = useState<TransactionHistoryItem[]>([])
 
   const fetchProducts = async (): Promise<Product[]> => {
@@ -40,11 +40,7 @@ export default function PosPage() {
   }
 
   useEffect(() => {
-    if (!isSupabaseConfigured) {
-      setPosMessage('Supabase is not configured. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.')
-      setIsLoadingHistory(false)
-      return
-    }
+    if (!isSupabaseConfigured) return
 
     const loadData = async () => {
       setIsLoadingHistory(true)
@@ -108,6 +104,10 @@ export default function PosPage() {
   const hasValidCash = !Number.isNaN(parsedCash) && parsedCash >= 0
   const change = hasValidCash ? parsedCash - saleTotal : 0
   const insufficientCash = cartItems.length > 0 && hasValidCash && change < 0
+  const displayPosMessage =
+    !isSupabaseConfigured
+      ? 'Supabase is not configured. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.'
+      : posMessage
 
   const formatCurrency = (value: number) =>
     new Intl.NumberFormat('en-PH', {
@@ -217,7 +217,7 @@ export default function PosPage() {
             change={change}
             insufficientCash={insufficientCash}
             isCompletingSale={isCompletingSale}
-            posMessage={posMessage}
+            posMessage={displayPosMessage}
             formatCurrency={formatCurrency}
             onDecreaseCartItem={decreaseCartItem}
             onClearSale={clearSale}

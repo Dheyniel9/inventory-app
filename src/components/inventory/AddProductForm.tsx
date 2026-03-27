@@ -5,9 +5,13 @@ type AddProductFormProps = {
   price: string
   isSubmitting: boolean
   message: string
+  title?: string
+  submitLabel?: string
+  isEditing?: boolean
   onNameChange: (value: string) => void
   onPriceChange: (value: string) => void
   onSubmit: (e: FormEvent<HTMLFormElement>) => void
+  onCancel?: () => void
 }
 
 export function AddProductForm({
@@ -15,16 +19,20 @@ export function AddProductForm({
   price,
   isSubmitting,
   message,
+  title = 'Add Product',
+  submitLabel = 'Add Product',
+  isEditing = false,
   onNameChange,
   onPriceChange,
   onSubmit,
+  onCancel,
 }: AddProductFormProps) {
   return (
     <article className="rounded-2xl border border-emerald-100 bg-white/85 p-4 shadow-lg shadow-slate-300/30 backdrop-blur-sm">
       <div className="mb-4 flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <h2 className="text-lg font-semibold text-slate-900">Add Product</h2>
+        <h2 className="text-lg font-semibold text-slate-900">{title}</h2>
         <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-800">
-          Live insert
+          {isEditing ? 'Live update' : 'Live insert'}
         </span>
       </div>
 
@@ -60,8 +68,19 @@ export function AddProductForm({
           type="submit"
           disabled={isSubmitting}
         >
-          {isSubmitting ? 'Adding...' : 'Add Product'}
+          {isSubmitting ? (isEditing ? 'Saving...' : 'Adding...') : submitLabel}
         </button>
+
+        {isEditing && onCancel ? (
+          <button
+            className="rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+            type="button"
+            onClick={onCancel}
+            disabled={isSubmitting}
+          >
+            Cancel Edit
+          </button>
+        ) : null}
       </form>
 
       {message && <p className="mt-3 text-sm font-medium text-sky-800">{message}</p>}

@@ -4,16 +4,20 @@ type InventoryListProps = {
   products: Product[]
   isLoading: boolean
   deletingId: number | null
+  editingId: number | null
   formatCurrency: (value: number) => string
   onDelete: (id: number) => void
+  onEdit: (product: Product) => void
 }
 
 export function InventoryList({
   products,
   isLoading,
   deletingId,
+  editingId,
   formatCurrency,
   onDelete,
+  onEdit,
 }: InventoryListProps) {
   return (
     <article className="rounded-2xl border border-emerald-100 bg-white/85 p-4 shadow-lg shadow-slate-300/30 backdrop-blur-sm">
@@ -42,6 +46,14 @@ export function InventoryList({
               </div>
 
               <div className="flex items-center justify-between gap-3 sm:justify-end">
+                <button
+                  className="w-full rounded-lg bg-sky-100 px-3 py-2 text-sm font-semibold text-sky-700 transition hover:bg-sky-200 disabled:cursor-not-allowed disabled:opacity-60 sm:min-w-20 sm:w-auto"
+                  onClick={() => onEdit(product)}
+                  disabled={deletingId === product.id}
+                >
+                  {editingId === product.id ? 'Editing' : 'Edit'}
+                </button>
+
                 <button
                   className="w-full rounded-lg bg-rose-100 px-3 py-2 text-sm font-semibold text-rose-700 transition hover:bg-rose-200 disabled:cursor-not-allowed disabled:opacity-60 sm:min-w-20 sm:w-auto"
                   onClick={() => onDelete(product.id)}

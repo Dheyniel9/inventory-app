@@ -12,8 +12,9 @@ import { Product } from '../../types/inventory'
 export default function ProductsPage() {
   const [name, setName] = useState('')
   const [price, setPrice] = useState('')
+  const [editingProductId, setEditingProductId] = useState<number | null>(null)
   const [products, setProducts] = useState<Product[]>([])
-  const [isLoading, setIsLoading] = useState(true)
+  const [isLoading, setIsLoading] = useState(isSupabaseConfigured)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [deletingId, setDeletingId] = useState<number | null>(null)
   const [message, setMessage] = useState('')
@@ -34,11 +35,7 @@ export default function ProductsPage() {
   }
 
   useEffect(() => {
-    if (!isSupabaseConfigured) {
-      setMessage('Supabase is not configured. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.')
-      setIsLoading(false)
-      return
-    }
+    if (!isSupabaseConfigured) return
 
     let isMounted = true
 
@@ -99,6 +96,11 @@ export default function ProductsPage() {
 
     if (!error) {
       setMessage('Product deleted.')
+      if (editingProductId === id) {
+        setEditingProductId(null)
+        setName('')
+        setPrice('')
+      }
       await loadProducts()
     } else if (error.code === '23503') {
       setMessage('Cannot delete product with recorded transactions.')
@@ -109,7 +111,67 @@ export default function ProductsPage() {
     setDeletingId(null)
   }
 
+  const startEditProduct = (product: Product) => {
+    setMessage('')
+    setEditingProductId(product.id)
+    setName(product.name)
+    setPrice(String(product.price))
+  }
+
+  const cancelEdit = () => {
+    setEditingProductId(null)
+    setName('')
+    setPrice('')
+    setMessage('Edit cancelled.')
+  }
+
+  const saveEditedProduct = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+
+    if (editingProductId === null) {
+      return
+    }
+
+    setIsSubmitting(true)
+    setMessage('')
+
+    if (!supabase) {
+      setMessage('Supabase is not configured. Please set environment variables first.')
+      setIsSubmitting(false)
+      return
+    }
+
+    const parsedPrice = parseFloat(price)
+
+    if (!name.trim() || Number.isNaN(parsedPrice)) {
+      setMessage('Please provide a valid name and price.')
+      setIsSubmitting(false)
+      return
+    }
+
+    const { error } = await supabase
+      .from('products')
+      .update({ name: name.trim(), price: parsedPrice })
+      .eq('id', editingProductId)
+
+    if (error) {
+      setMessage('Error: ' + error.message)
+    } else {
+      setMessage('Product updated.')
+      setEditingProductId(null)
+      setName('')
+      setPrice('')
+      await loadProducts()
+    }
+
+    setIsSubmitting(false)
+  }
+
   const totalProducts = products.length
+  const displayMessage =
+    !isSupabaseConfigured
+      ? 'Supabase is not configured. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.'
+      : message
   const averagePrice =
     totalProducts > 0 ? products.reduce((sum, p) => sum + p.price, 0) / totalProducts : 0
   const catalogValue = products.reduce((sum, p) => sum + p.price, 0)
@@ -141,17 +203,23 @@ export default function ProductsPage() {
             name={name}
             price={price}
             isSubmitting={isSubmitting}
-            message={message}
+            message={displayMessage}
+            title={editingProductId === null ? 'Add Product' : 'Edit Product'}
+            submitLabel={editingProductId === null ? 'Add Product' : 'Save Product'}
+            isEditing={editingProductId !== null}
             onNameChange={setName}
             onPriceChange={setPrice}
-            onSubmit={addProduct}
+            onSubmit={editingProductId === null ? addProduct : saveEditedProduct}
+            onCancel={cancelEdit}
           />
 
           <InventoryList
             products={products}
             isLoading={isLoading}
             deletingId={deletingId}
+            editingId={editingProductId}
             formatCurrency={formatCurrency}
+            onEdit={startEditProduct}
             onDelete={(id) => {
               void deleteProduct(id)
             }}
