@@ -22,6 +22,12 @@ export function AppNavigation() {
       <Link href="/pos" className={tabClass(pathname === '/pos')}>
         POS + Transactions
       </Link>
+      <Link
+        href="/cash-monitoring"
+        className={tabClass(pathname === '/cash-monitoring')}
+      >
+        Daily Cash Monitoring
+      </Link>
     </nav>
   )
 }
