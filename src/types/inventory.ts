@@ -18,3 +18,13 @@ export type TransactionHistoryItem = {
   total_items: number
   line_count: number
 }
+
+export type GCashEntry = {
+  id: number
+  session_id: number
+  type: 'cash_in' | 'cash_out'
+  amount: number
+  reference_id: string | null
+  description: string | null
+  created_at: string
+}

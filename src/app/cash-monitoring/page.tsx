@@ -1,9 +1,12 @@
 'use client'
 
 import { FormEvent, useEffect, useMemo, useState } from 'react'
+import { AddGCashEntryForm } from '../../components/inventory/AddGCashEntryForm'
 import { AppNavigation } from '../../components/inventory/AppNavigation'
+import { GCashList } from '../../components/inventory/GCashList'
 import { InventoryHeader } from '../../components/inventory/InventoryHeader'
 import { isSupabaseConfigured, supabase } from '../../lib/supabaseClient'
+import { GCashEntry } from '../../types/inventory'
 
 type CashSession = {
   id: number
@@ -64,12 +67,19 @@ export default function CashMonitoringPage() {
   const [salesDescriptionInput, setSalesDescriptionInput] = useState('')
   const [expenseAmountInput, setExpenseAmountInput] = useState('')
   const [expenseReasonInput, setExpenseReasonInput] = useState('')
+  const [gcashType, setGcashType] = useState<'cash_in' | 'cash_out'>('cash_in')
+  const [gcashAmount, setGcashAmount] = useState('')
+  const [gcashReferenceId, setGcashReferenceId] = useState('')
+  const [gcashDescription, setGcashDescription] = useState('')
   const [session, setSession] = useState<CashSession | null>(null)
   const [sales, setSales] = useState<SaleItem[]>([])
   const [expenses, setExpenses] = useState<ExpenseItem[]>([])
+  const [gcashEntries, setGcashEntries] = useState<GCashEntry[]>([])
   const [message, setMessage] = useState('')
   const [isLoading, setIsLoading] = useState(isSupabaseConfigured)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [deletingId, setDeletingId] = useState<number | null>(null)
+  const [editingId, setEditingId] = useState<number | null>(null)
 
   const startingCash = Number.parseFloat(startingCashInput)
   const parsedActualCash = Number.parseFloat(actualCashInput)
@@ -99,7 +109,7 @@ export default function CashMonitoringPage() {
   const loadSessionData = async (cashSession: CashSession) => {
     if (!supabase) return
 
-    const [salesResponse, expensesResponse] = await Promise.all([
+    const [salesResponse, expensesResponse, gcashResponse] = await Promise.all([
       supabase
         .from('sales')
         .select('*')
@@ -110,15 +120,21 @@ export default function CashMonitoringPage() {
         .select('*')
         .eq('session_id', cashSession.id)
         .order('created_at', { ascending: false }),
+      supabase
+        .from('gcash_entries')
+        .select('*')
+        .eq('session_id', cashSession.id)
+        .order('created_at', { ascending: false }),
     ])
 
-    if (salesResponse.error || expensesResponse.error) {
+    if (salesResponse.error || expensesResponse.error || gcashResponse.error) {
       setMessage('Unable to load transactions for this session.')
       return
     }
 
     setSales((salesResponse.data ?? []) as SaleItem[])
     setExpenses((expensesResponse.data ?? []) as ExpenseItem[])
+    setGcashEntries((gcashResponse.data ?? []) as GCashEntry[])
   }
 
   const fetchTodaySession = async () => {
@@ -305,6 +321,84 @@ export default function CashMonitoringPage() {
     setExpenseReasonInput('')
     setMessage('Expense entry added.')
     setIsSubmitting(false)
+  }
+
+  const addGCashEntry = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    setMessage('')
+
+    if (!supabase || !session) {
+      setMessage('Start a session before adding GCash entries.')
+      return
+    }
+
+    const amount = Number.parseFloat(gcashAmount)
+    const refId = gcashReferenceId.trim()
+    const desc = gcashDescription.trim()
+
+    if (!Number.isFinite(amount) || amount <= 0) {
+      setMessage('GCash amount must be a number greater than 0.')
+      return
+    }
+
+    setIsSubmitting(true)
+
+    const { data, error } = await supabase
+      .from('gcash_entries')
+      .insert([
+        {
+          session_id: session.id,
+          type: gcashType,
+          amount,
+          reference_id: refId || null,
+          description: desc || null,
+        },
+      ])
+      .select('*')
+      .single()
+
+    if (error || !data) {
+      setMessage('Unable to add GCash entry.')
+      setIsSubmitting(false)
+      return
+    }
+
+    setGcashEntries((current) => [data as GCashEntry, ...current])
+    setGcashAmount('')
+    setGcashReferenceId('')
+    setGcashDescription('')
+    setMessage('GCash entry added.')
+    setIsSubmitting(false)
+  }
+
+  const deleteGCashEntry = async (id: number) => {
+    if (!supabase) return
+
+    setDeletingId(id)
+    setMessage('')
+
+    const { error } = await supabase
+      .from('gcash_entries')
+      .delete()
+      .eq('id', id)
+
+    if (error) {
+      setMessage('Unable to delete GCash entry.')
+      setDeletingId(null)
+      return
+    }
+
+    setGcashEntries((current) => current.filter((item) => item.id !== id))
+    setMessage('GCash entry deleted.')
+    setDeletingId(null)
+  }
+
+  const editGCashEntry = (entry: GCashEntry) => {
+    setEditingId(entry.id)
+    setGcashType(entry.type)
+    setGcashAmount(String(entry.amount))
+    setGcashReferenceId(entry.reference_id || '')
+    setGcashDescription(entry.description || '')
   }
 
   const endDay = async (e: FormEvent<HTMLFormElement>) => {
@@ -517,6 +611,42 @@ export default function CashMonitoringPage() {
               )}
             </ul>
           </section>
+
+          <AddGCashEntryForm
+            type={gcashType}
+            amount={gcashAmount}
+            referenceId={gcashReferenceId}
+            description={gcashDescription}
+            isSubmitting={isSubmitting}
+            message=""
+            submitLabel={editingId ? 'Update Entry' : 'Add Entry'}
+            isEditing={editingId !== null}
+            onTypeChange={setGcashType}
+            onAmountChange={setGcashAmount}
+            onReferenceIdChange={setGcashReferenceId}
+            onDescriptionChange={setGcashDescription}
+            onSubmit={addGCashEntry}
+            onCancel={
+              editingId
+                ? () => {
+                    setEditingId(null)
+                    setGcashAmount('')
+                    setGcashReferenceId('')
+                    setGcashDescription('')
+                  }
+                : undefined
+            }
+          />
+
+          <GCashList
+            entries={gcashEntries}
+            isLoading={isLoading}
+            deletingId={deletingId}
+            editingId={editingId}
+            formatCurrency={formatCurrency}
+            onDelete={deleteGCashEntry}
+            onEdit={editGCashEntry}
+          />
 
           <section className="rounded-2xl border border-emerald-100 bg-white/90 p-4 shadow-sm xl:col-span-2">
             <h2 className="text-lg font-semibold text-emerald-900">End of Day</h2>
