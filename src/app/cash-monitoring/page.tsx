@@ -59,6 +59,11 @@ const formatDateTime = (value: string) =>
     minute: '2-digit',
   })
 
+const roundMoney = (value: number) => {
+  const rounded = Math.round(value * 100) / 100
+  return Object.is(rounded, -0) ? 0 : rounded
+}
+
 export default function CashMonitoringPage() {
   const [sessionDate] = useState(getTodayDateString())
   const [startingCashInput, setStartingCashInput] = useState(String(DEFAULT_STARTING_CASH))
@@ -83,19 +88,30 @@ export default function CashMonitoringPage() {
 
   const startingCash = Number.parseFloat(startingCashInput)
   const parsedActualCash = Number.parseFloat(actualCashInput)
-  const totalSales = useMemo(() => sales.reduce((sum, item) => sum + item.amount, 0), [sales])
-  const totalExpenses = useMemo(
+  const totalCashSales = useMemo(() => sales.reduce((sum, item) => sum + item.amount, 0), [sales])
+  const totalCashExpenses = useMemo(
     () => expenses.reduce((sum, item) => sum + item.amount, 0),
     [expenses],
   )
+  const totalGCashCashIn = useMemo(
+    () => gcashEntries.filter((entry) => entry.type === 'cash_in').reduce((sum, entry) => sum + entry.amount, 0),
+    [gcashEntries],
+  )
+  const totalGCashCashOut = useMemo(
+    () => gcashEntries.filter((entry) => entry.type === 'cash_out').reduce((sum, entry) => sum + entry.amount, 0),
+    [gcashEntries],
+  )
 
-  const expectedCash =
+  // Physical drawer cash formula:
+  // Expected Cash = Starting Cash + Total Cash Sales + Total GCash Cash-In - Total Cash Expenses - Total GCash Cash-Out
+  const expectedCash = roundMoney(
     Number.isFinite(startingCash) && startingCash >= 0
-      ? startingCash + totalSales - totalExpenses
-      : totalSales - totalExpenses
+      ? startingCash + totalCashSales + totalGCashCashIn - totalCashExpenses - totalGCashCashOut
+      : totalCashSales + totalGCashCashIn - totalCashExpenses - totalGCashCashOut,
+  )
 
   const hasActualCash = Number.isFinite(parsedActualCash) && parsedActualCash >= 0
-  const discrepancy = hasActualCash ? parsedActualCash - expectedCash : null
+  const discrepancy = hasActualCash ? roundMoney(parsedActualCash - expectedCash) : null
 
   const discrepancyStatus =
     discrepancy === null
@@ -421,7 +437,7 @@ export default function CashMonitoringPage() {
       .from('cash_sessions')
       .update({
         expected_cash: expectedCash,
-        actual_cash: parsedActualCash,
+        actual_cash: roundMoney(parsedActualCash),
         discrepancy,
       })
       .eq('id', session.id)
@@ -445,35 +461,32 @@ export default function CashMonitoringPage() {
       : message
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-gradient-to-br from-stone-100 via-emerald-50/30 to-amber-50 px-3 py-6 sm:px-4 sm:py-7 lg:px-6">
-      <div className="pointer-events-none absolute -right-10 -top-12 h-80 w-80 rounded-full bg-emerald-300/20 blur-3xl" />
-      <div className="pointer-events-none absolute -bottom-20 -left-10 h-96 w-96 rounded-full bg-amber-300/20 blur-3xl" />
-
-      <section className="animate-fadeIn relative z-10 w-full">
+    <main className="min-h-screen bg-slate-50 px-3 py-4 lg:px-4">
+      <section className="w-full">
         <InventoryHeader />
         <AppNavigation />
 
-        <header className="mb-4 rounded-2xl border border-emerald-100 bg-white/90 p-4 shadow-sm">
-          <h1 className="text-xl font-bold text-emerald-900 sm:text-2xl">Daily Cash Monitoring</h1>
-          <p className="mt-1 text-sm text-emerald-700">Session Date: {sessionDate}</p>
+        <header className="mb-4 rounded-xl border border-slate-200 bg-white p-4">
+          <h1 className="text-xl font-bold text-slate-900 sm:text-2xl">Cash Monitoring</h1>
+          <p className="mt-1 text-sm text-slate-600">Session Date: {sessionDate}</p>
           {displayMessage ? (
-            <p className="mt-2 rounded-lg border border-emerald-100 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
+            <p className="mt-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
               {displayMessage}
             </p>
           ) : null}
         </header>
 
-        <section className="grid grid-cols-1 gap-5 xl:grid-cols-2">
-          <section className="rounded-2xl border border-emerald-100 bg-white/90 p-4 shadow-sm">
-            <h2 className="text-lg font-semibold text-emerald-900">Start Session</h2>
+        <section className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          <section className="rounded-xl border border-slate-200 bg-white p-4">
+            <h2 className="text-lg font-semibold text-slate-900">Start Session</h2>
             <form className="mt-3 space-y-3" onSubmit={startSession}>
-              <label className="block text-sm font-medium text-emerald-900">
+              <label className="block text-sm font-medium text-slate-700">
                 Starting Cash
                 <input
                   type="number"
                   min="0"
                   step="0.01"
-                  className="mt-1 w-full rounded-lg border border-emerald-200 bg-white px-3 py-2 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
+                  className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-100"
                   value={startingCashInput}
                   onChange={(event) => setStartingCashInput(event.target.value)}
                 />
@@ -481,60 +494,80 @@ export default function CashMonitoringPage() {
               <button
                 type="submit"
                 disabled={Boolean(session) || isSubmitting || isLoading || !isSupabaseConfigured}
-                className="w-full rounded-lg bg-emerald-700 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-800 disabled:cursor-not-allowed disabled:bg-emerald-300"
+                className="w-full rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-400"
               >
                 {session ? 'Session Active' : 'Start Session'}
               </button>
             </form>
           </section>
 
-          <section className="rounded-2xl border border-emerald-100 bg-white/90 p-4 shadow-sm">
-            <h2 className="text-lg font-semibold text-emerald-900">Summary</h2>
-            <dl className="mt-3 space-y-2 text-sm text-emerald-900">
+          <section className="rounded-xl border border-slate-200 bg-white p-4">
+            <h2 className="text-lg font-semibold text-slate-900">Summary</h2>
+            <dl className="mt-3 space-y-2 text-sm text-slate-700">
               <div className="flex items-center justify-between">
                 <dt>Starting Cash</dt>
                 <dd className="font-semibold">{formatCurrency(Number.isFinite(startingCash) ? startingCash : 0)}</dd>
               </div>
               <div className="flex items-center justify-between">
-                <dt>Total Sales</dt>
-                <dd className="font-semibold text-emerald-700">{formatCurrency(totalSales)}</dd>
+                <dt>Total Cash Sales</dt>
+                <dd className="font-semibold text-emerald-700">{formatCurrency(totalCashSales)}</dd>
               </div>
               <div className="flex items-center justify-between">
-                <dt>Total Expenses</dt>
-                <dd className="font-semibold text-rose-700">{formatCurrency(totalExpenses)}</dd>
+                <dt>GCash Cash In</dt>
+                <dd className="font-semibold text-emerald-700">{formatCurrency(totalGCashCashIn)}</dd>
               </div>
-              <div className="flex items-center justify-between border-t border-emerald-100 pt-2 text-base">
+              <div className="flex items-center justify-between">
+                <dt>GCash Cash Out</dt>
+                <dd className="font-semibold text-rose-700">{formatCurrency(totalGCashCashOut)}</dd>
+              </div>
+              <div className="flex items-center justify-between">
+                <dt>Total Cash Expenses</dt>
+                <dd className="font-semibold text-rose-600">{formatCurrency(totalCashExpenses)}</dd>
+              </div>
+              <div className="flex items-center justify-between border-t border-slate-200 pt-2 text-base">
                 <dt className="font-semibold">Expected Cash</dt>
-                <dd className="font-bold text-emerald-900">{formatCurrency(expectedCash)}</dd>
+                <dd className="font-bold text-slate-900">{formatCurrency(expectedCash)}</dd>
+              </div>
+              <div className="flex items-center justify-between">
+                <dt>Actual Cash</dt>
+                <dd className="font-semibold">
+                  {hasActualCash ? formatCurrency(parsedActualCash) : 'Pending'}
+                </dd>
+              </div>
+              <div className="flex items-center justify-between">
+                <dt>Discrepancy</dt>
+                <dd className="font-semibold">
+                  {discrepancy === null ? 'Pending' : formatCurrency(discrepancy)} ({discrepancyStatus})
+                </dd>
               </div>
             </dl>
           </section>
 
-          <section className="rounded-2xl border border-emerald-100 bg-white/90 p-4 shadow-sm">
-            <h2 className="text-lg font-semibold text-emerald-900">Sales List</h2>
+          <section className="rounded-xl border border-slate-200 bg-white p-4">
+            <h2 className="text-lg font-semibold text-slate-900">Cash Sales</h2>
             <form className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-[minmax(120px,160px)_1fr_auto]" onSubmit={addSale}>
               <input
                 type="number"
                 min="0"
                 step="0.01"
                 placeholder="Amount"
-                className="rounded-lg border border-emerald-200 bg-white px-3 py-2 text-sm outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
+                className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-100"
                 value={salesAmountInput}
                 onChange={(event) => setSalesAmountInput(event.target.value)}
               />
               <input
                 type="text"
                 placeholder="Description (optional)"
-                className="rounded-lg border border-emerald-200 bg-white px-3 py-2 text-sm outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
+                className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-100"
                 value={salesDescriptionInput}
                 onChange={(event) => setSalesDescriptionInput(event.target.value)}
               />
               <button
                 type="submit"
                 disabled={!session || isSubmitting || !isSupabaseConfigured}
-                className="rounded-lg bg-emerald-700 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-800 disabled:cursor-not-allowed disabled:bg-emerald-300"
+                className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-400"
               >
-                Add Sale
+                Add Cash Sale
               </button>
             </form>
 
@@ -547,14 +580,14 @@ export default function CashMonitoringPage() {
                 sales.map((item) => (
                   <li
                     key={item.id}
-                    className="rounded-lg border border-emerald-100 bg-emerald-50/40 px-3 py-2 text-sm"
+                    className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm"
                   >
                     <div className="flex items-center justify-between gap-3">
-                      <span className="font-semibold text-emerald-900">{formatCurrency(item.amount)}</span>
-                      <span className="text-xs text-emerald-700">{formatDateTime(item.created_at)}</span>
+                      <span className="font-semibold text-slate-900">{formatCurrency(item.amount)}</span>
+                      <span className="text-xs text-slate-500">{formatDateTime(item.created_at)}</span>
                     </div>
                     {item.description ? (
-                      <p className="mt-1 text-xs text-emerald-800">{item.description}</p>
+                      <p className="mt-1 text-xs text-slate-600">{item.description}</p>
                     ) : null}
                   </li>
                 ))
@@ -562,8 +595,8 @@ export default function CashMonitoringPage() {
             </ul>
           </section>
 
-          <section className="rounded-2xl border border-emerald-100 bg-white/90 p-4 shadow-sm">
-            <h2 className="text-lg font-semibold text-emerald-900">Expenses List</h2>
+          <section className="rounded-xl border border-slate-200 bg-white p-4">
+            <h2 className="text-lg font-semibold text-slate-900">Expenses</h2>
             <form
               className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-[minmax(120px,160px)_1fr_auto]"
               onSubmit={addExpense}
@@ -573,21 +606,21 @@ export default function CashMonitoringPage() {
                 min="0"
                 step="0.01"
                 placeholder="Amount"
-                className="rounded-lg border border-emerald-200 bg-white px-3 py-2 text-sm outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
+                className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-100"
                 value={expenseAmountInput}
                 onChange={(event) => setExpenseAmountInput(event.target.value)}
               />
               <input
                 type="text"
                 placeholder="Reason"
-                className="rounded-lg border border-emerald-200 bg-white px-3 py-2 text-sm outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
+                className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-100"
                 value={expenseReasonInput}
                 onChange={(event) => setExpenseReasonInput(event.target.value)}
               />
               <button
                 type="submit"
                 disabled={!session || isSubmitting || !isSupabaseConfigured}
-                className="rounded-lg bg-rose-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-rose-700 disabled:cursor-not-allowed disabled:bg-rose-300"
+                className="rounded-lg bg-slate-700 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-400"
               >
                 Add Expense
               </button>
@@ -600,12 +633,12 @@ export default function CashMonitoringPage() {
                 </li>
               ) : (
                 expenses.map((item) => (
-                  <li key={item.id} className="rounded-lg border border-rose-100 bg-rose-50/40 px-3 py-2 text-sm">
+                  <li key={item.id} className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm">
                     <div className="flex items-center justify-between gap-3">
-                      <span className="font-semibold text-rose-800">{formatCurrency(item.amount)}</span>
-                      <span className="text-xs text-rose-700">{formatDateTime(item.created_at)}</span>
+                      <span className="font-semibold text-slate-900">{formatCurrency(item.amount)}</span>
+                      <span className="text-xs text-slate-500">{formatDateTime(item.created_at)}</span>
                     </div>
-                    <p className="mt-1 text-xs text-rose-800">{item.reason}</p>
+                    <p className="mt-1 text-xs text-slate-600">{item.reason}</p>
                   </li>
                 ))
               )}
@@ -648,22 +681,22 @@ export default function CashMonitoringPage() {
             onEdit={editGCashEntry}
           />
 
-          <section className="rounded-2xl border border-emerald-100 bg-white/90 p-4 shadow-sm xl:col-span-2">
-            <h2 className="text-lg font-semibold text-emerald-900">End of Day</h2>
-            <form className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-[220px_1fr_auto]" onSubmit={endDay}>
-              <label className="text-sm font-medium text-emerald-900">
+          <section className="rounded-xl border border-slate-200 bg-white p-4 lg:col-span-2">
+            <h2 className="text-lg font-semibold text-slate-900">End of Day</h2>
+            <form className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-[220px_1fr_auto]" onSubmit={endDay}>
+              <label className="text-sm font-medium text-slate-700">
                 Actual Cash Count
                 <input
                   type="number"
                   min="0"
                   step="0.01"
-                  className="mt-1 w-full rounded-lg border border-emerald-200 bg-white px-3 py-2 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
+                  className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-100"
                   value={actualCashInput}
                   onChange={(event) => setActualCashInput(event.target.value)}
                 />
               </label>
 
-              <div className="rounded-lg border border-emerald-100 bg-emerald-50/60 px-3 py-2 text-sm text-emerald-900">
+              <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
                 <p>
                   Expected Cash: <span className="font-semibold">{formatCurrency(expectedCash)}</span>
                 </p>
@@ -681,7 +714,7 @@ export default function CashMonitoringPage() {
               <button
                 type="submit"
                 disabled={!session || isSubmitting || !isSupabaseConfigured}
-                className="rounded-lg bg-emerald-700 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-800 disabled:cursor-not-allowed disabled:bg-emerald-300"
+                className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-400"
               >
                 Save End of Day
               </button>
