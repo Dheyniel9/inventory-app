@@ -47,7 +47,7 @@ export function PosCheckout({
       {cartItems.length === 0 ? (
         <p className="text-sm text-slate-600">No items selected yet.</p>
       ) : (
-        <div className="mb-4 grid gap-2">
+        <div className="mb-4 grid max-h-[20rem] gap-2 overflow-y-auto pr-1">
           {cartItems.map((item) => (
             <div key={item.id} className="rounded-xl border border-slate-200 bg-white px-3 py-2">
               <div className="flex items-center justify-between gap-2">
