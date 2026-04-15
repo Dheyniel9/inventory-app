@@ -33,37 +33,39 @@ export function InventoryList({
       ) : products.length === 0 ? (
         <p className="text-sm text-slate-600">No products yet. Add your first item to get started.</p>
       ) : (
-        <div className="grid gap-2" role="list">
-          {products.map((product) => (
-            <div
-              className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-4 sm:flex-row sm:items-center sm:justify-between"
-              role="listitem"
-              key={product.id}
-            >
-              <div>
-                <p className="text-base font-semibold text-slate-900">{product.name}</p>
-                <p className="text-sm text-slate-600">{formatCurrency(product.price)}</p>
-              </div>
+        <div className="max-h-[28rem] overflow-y-auto pr-1">
+          <div className="grid gap-2" role="list">
+            {products.map((product) => (
+              <div
+                className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-4 sm:flex-row sm:items-center sm:justify-between"
+                role="listitem"
+                key={product.id}
+              >
+                <div>
+                  <p className="text-base font-semibold text-slate-900">{product.name}</p>
+                  <p className="text-sm text-slate-600">{formatCurrency(product.price)}</p>
+                </div>
 
-              <div className="flex items-center justify-between gap-3 sm:justify-end">
-                <button
-                  className="w-full rounded-lg bg-sky-100 px-3 py-2 text-sm font-semibold text-sky-700 transition hover:bg-sky-200 disabled:cursor-not-allowed disabled:opacity-60 sm:min-w-20 sm:w-auto"
-                  onClick={() => onEdit(product)}
-                  disabled={deletingId === product.id}
-                >
-                  {editingId === product.id ? 'Editing' : 'Edit'}
-                </button>
+                <div className="flex items-center justify-between gap-3 sm:justify-end">
+                  <button
+                    className="w-full rounded-lg bg-sky-100 px-3 py-2 text-sm font-semibold text-sky-700 transition hover:bg-sky-200 disabled:cursor-not-allowed disabled:opacity-60 sm:min-w-20 sm:w-auto"
+                    onClick={() => onEdit(product)}
+                    disabled={deletingId === product.id}
+                  >
+                    {editingId === product.id ? 'Editing' : 'Edit'}
+                  </button>
 
-                <button
-                  className="w-full rounded-lg bg-rose-100 px-3 py-2 text-sm font-semibold text-rose-700 transition hover:bg-rose-200 disabled:cursor-not-allowed disabled:opacity-60 sm:min-w-20 sm:w-auto"
-                  onClick={() => onDelete(product.id)}
-                  disabled={deletingId === product.id}
-                >
-                  {deletingId === product.id ? 'Removing...' : 'Delete'}
-                </button>
+                  <button
+                    className="w-full rounded-lg bg-rose-100 px-3 py-2 text-sm font-semibold text-rose-700 transition hover:bg-rose-200 disabled:cursor-not-allowed disabled:opacity-60 sm:min-w-20 sm:w-auto"
+                    onClick={() => onDelete(product.id)}
+                    disabled={deletingId === product.id}
+                  >
+                    {deletingId === product.id ? 'Removing...' : 'Delete'}
+                  </button>
+                </div>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       )}
     </article>
